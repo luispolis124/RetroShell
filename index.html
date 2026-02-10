@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetroShell - Hub</title>
+    <link rel="stylesheet" href="assets/css/hub.css">
+</head>
+<body>
+
+    <div id="hub-container">
+        <header>
+            <h1>RETROSHELL</h1>
+            <p class="subtitle">Sua estante virtual de consoles 2D</p>
+        </header>
+
+        <section class="shelf">
+            <div class="console-card" onclick="goToConsole('nes')">
+                <div class="card-visual nes-visual">
+                    <div class="stripe"></div>
+                </div>
+                <h2>NES</h2>
+                <p>8-Bit Entertainment</p>
+            </div>
+
+            <div class="console-card locked">
+                <div class="card-visual gb-visual"></div>
+                <h2>Game Boy</h2>
+                <p>Em breve...</p>
+            </div>
+        </section>
+
+        <footer>
+            <div class="legal-box">
+                <p>⚠️ **AVISO IMPORTANTE:** O RetroShell é apenas uma interface de emulação.</p>
+                <p>Não fornecemos jogos ou arquivos de sistema. O usuário deve possuir legalmente seus arquivos .nes para utilizá-los através do botão de importação.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        function goToConsole(system) {
+            if (system === 'nes') {
+                window.location.href = 'nes.html';
+            }
+        }
+    </script>
+</body>
+</html>

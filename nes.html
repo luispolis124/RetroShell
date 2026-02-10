@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEScape - Multi-Platform Immersive</title>
+    <script src="https://unpkg.com/jsnes/dist/jsnes.min.js"></script>
+    <style>
+        :root { 
+            --nes-light: #d1d1d1; --nes-mid: #a3a3a3; --nes-dark: #353535; 
+            --nes-red: #b5221b; --nes-black: #111;
+        }
+        
+        body {
+            background-color: #1a1a1a; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; min-height: 100vh;
+            margin: 0; color: white; font-family: 'Segoe UI', sans-serif;
+            overflow: hidden; touch-action: none; user-select: none;
+        }
+
+        #main-layout {
+            display: flex; flex-direction: column; align-items: center; gap: 20px;
+            width: 95vw; max-width: 1000px;
+        }
+
+        #console-body {
+            position: relative; width: 100%; max-width: 600px;
+            background: var(--nes-light); border-radius: 12px;
+            box-shadow: 10px 10px 0px #000; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        #console-top { display: flex; min-height: 280px; }
+        #screen-area { 
+            flex-grow: 1; background: var(--nes-light); display: flex; 
+            align-items: center; justify-content: center; padding: 15px; 
+        }
+        #screen { 
+            width: 100%; aspect-ratio: 256 / 240; background: #000; 
+            border: 8px solid var(--nes-black); border-radius: 4px; cursor: crosshair;
+        }
+        canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+
+        #stripe-black { 
+            background: var(--nes-dark); width: 20%; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center; gap: 15px; 
+        }
+        .vents { width: 70%; height: 40px; background: repeating-linear-gradient(var(--nes-mid), var(--nes-mid) 4px, var(--nes-light) 4px, var(--nes-light) 8px); }
+
+        #console-bottom { 
+            background: var(--nes-mid); height: 65px; border-top: 4px solid #888; 
+            display: flex; align-items: center; padding: 0 20px; 
+        }
+        .power-led { width: 10px; height: 10px; background: #500; border-radius: 50%; margin-right: 12px; }
+        .power-led.on { background: #f00; box-shadow: 0 0 10px #f00; }
+        .console-btn { width: 40px; height: 20px; background: #666; border: 2px solid #444; cursor: pointer; }
+
+        #gamepad {
+            display: grid; grid-template-columns: 1fr 1fr 1fr;
+            width: 100%; max-width: 500px; background: #bbb;
+            padding: 20px; border: 4px solid #999; border-radius: 15px;
+            box-shadow: 0 8px 0 #666; align-items: center;
+        }
+
+        .d-pad { display: grid; grid-template-areas: ". up ." "left . right" ". down ."; gap: 2px; }
+        .joy-btn { 
+            background: var(--nes-dark); color: #555; border: none; 
+            width: 45px; height: 45px; font-size: 20px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            touch-action: none;
+        }
+        .up { grid-area: up; border-radius: 5px 5px 0 0; }
+        .down { grid-area: down; border-radius: 0 0 5px 5px; }
+        .left { grid-area: left; border-radius: 5px 0 0 5px; }
+        .right { grid-area: right; border-radius: 0 5px 5px 0; }
+
+        .center-btns { display: flex; flex-direction: column; gap: 15px; align-items: center; }
+        .tiny-btn { background: #555; width: 40px; height: 12px; border-radius: 10px; border: none; cursor: pointer; }
+
+        .action-btns { display: flex; gap: 15px; }
+        .joy-red { 
+            background: var(--nes-red); border-radius: 50%; width: 55px; height: 55px; 
+            border: 3px solid #800; color: white; font-weight: bold;
+        }
+
+        @media (min-width: 1024px) {
+            #main-layout { flex-direction: row; justify-content: center; }
+            #gamepad { grid-template-columns: 1fr; height: fit-content; gap: 30px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-layout">
+        <div id="console-body">
+            <div id="console-top">
+                <div id="screen-area">
+                    <div id="screen"><canvas id="nes-canvas" width="256" height="240"></canvas></div>
+                </div>
+                <div id="stripe-black"><div class="vents"></div><div class="vents"></div></div>
+            </div>
+            <div id="console-bottom">
+                <div class="power-led" id="led"></div>
+                <button class="console-btn" title="Power / Load" onclick="document.getElementById('rom-loader').click()"></button>
+                <span style="font-size: 9px; color: #333; font-weight: bold; margin: 0 10px;">POWER</span>
+                <button class="console-btn" title="Reset" onclick="resetNES()"></button>
+                <span style="font-size: 9px; color: #333; font-weight: bold; margin: 0 10px;">RESET</span>
+                <input type="file" id="rom-loader" accept=".nes" style="display:none">
+            </div>
+        </div>
+
+        <div id="gamepad">
+            <div class="d-pad">
+                <button class="joy-btn up" data-key="38">▲</button>
+                <button class="joy-btn left" data-key="37">◀</button>
+                <button class="joy-btn right" data-key="39">▶</button>
+                <button class="joy-btn down" data-key="40">▼</button>
+            </div>
+            <div class="center-btns">
+                <div><button class="tiny-btn" data-key="32"></button><div style="font-size:7px; color:#444; text-align:center">SELECT</div></div>
+                <div><button class="tiny-btn" data-key="13"></button><div style="font-size:7px; color:#444; text-align:center">START</div></div>
+            </div>
+            <div class="action-btns">
+                <button class="joy-btn joy-red" data-key="88">B</button>
+                <button class="joy-btn joy-red" data-key="90">A</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('nes-canvas');
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, 256, 240);
+        const buf = new ArrayBuffer(imageData.data.length);
+        const buf8 = new Uint8ClampedArray(buf);
+        const buf32 = new Uint32Array(buf);
+
+        let currentRomData = null, frameTicker = null;
+        let audioCtx = null, scriptNode = null, audioBuffer = new Float32Array(8192);
+        let writePointer = 0, readPointer = 0;
+
+        const nes = new jsnes.NES({
+            onFrame: (fb) => {
+                for (let i = 0; i < 256 * 240; i++) buf32[i] = 0xFF000000 | fb[i];
+                imageData.data.set(buf8);
+                ctx.putImageData(imageData, 0, 0);
+            },
+            onAudioSample: (l, r) => {
+                if (!audioCtx) return;
+                audioBuffer[writePointer] = l;
+                audioBuffer[writePointer + 1] = r;
+                writePointer = (writePointer + 2) % audioBuffer.length;
+            }
+        });
+
+        // --- INPUTS ---
+        const keys = { 38:0, 40:1, 37:2, 39:3, 13:4, 32:5, 90:6, 88:7 };
+        const nesKeys = [
+            jsnes.Controller.BUTTON_UP, jsnes.Controller.BUTTON_DOWN,
+            jsnes.Controller.BUTTON_LEFT, jsnes.Controller.BUTTON_RIGHT,
+            jsnes.Controller.BUTTON_START, jsnes.Controller.BUTTON_SELECT,
+            jsnes.Controller.BUTTON_A, jsnes.Controller.BUTTON_B
+        ];
+
+        function press(code) {
+            if (audioCtx?.state === 'suspended') audioCtx.resume();
+            if (keys[code] !== undefined) nes.buttonDown(1, nesKeys[keys[code]]);
+        }
+        function release(code) {
+            if (keys[code] !== undefined) nes.buttonUp(1, nesKeys[keys[code]]);
+        }
+
+        // Eventos Visuais e Lógica
+        document.querySelectorAll('[data-key]').forEach(btn => {
+            const code = parseInt(btn.dataset.key);
+            
+            const handleStart = (e) => {
+                e.preventDefault();
+                press(code);
+                btn.style.filter = 'brightness(1.5)';
+                window.focus(); // Garante que o teclado não perca o foco
+            };
+
+            const handleEnd = (e) => {
+                e.preventDefault();
+                release(code);
+                btn.style.filter = 'none';
+            };
+
+            btn.addEventListener('pointerdown', handleStart);
+            btn.addEventListener('pointerup', handleEnd);
+            btn.addEventListener('pointerleave', handleEnd);
+        });
+
+        // Teclado Físico
+        window.addEventListener("keydown", (e) => {
+            press(e.keyCode);
+            // Evita scroll com as setas
+            if([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) e.preventDefault();
+        });
+        window.addEventListener("keyup", (e) => release(e.keyCode));
+
+        // --- ENGINE ---
+        function resetNES() { 
+            if (currentRomData) {
+                nes.reloadROM();
+                window.focus();
+            }
+        }
+
+        document.getElementById('rom-loader').addEventListener('change', (e) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+                    scriptNode = audioCtx.createScriptProcessor(1024, 0, 2);
+                    scriptNode.onaudioprocess = (ap) => {
+                        const oL = ap.outputBuffer.getChannelData(0), oR = ap.outputBuffer.getChannelData(1);
+                        for (let i = 0; i < oL.length; i++) {
+                            oL[i] = audioBuffer[readPointer]; oR[i] = audioBuffer[readPointer+1];
+                            readPointer = (readPointer + 2) % audioBuffer.length;
+                        }
+                    };
+                    scriptNode.connect(audioCtx.destination);
+                }
+                currentRomData = ev.target.result;
+                nes.loadROM(currentRomData);
+                document.getElementById('led').classList.add('on');
+                if (frameTicker) clearInterval(frameTicker);
+                frameTicker = setInterval(() => nes.frame(), 1000/60);
+                window.focus();
+            };
+            reader.readAsBinaryString(e.target.files[0]);
+        });
+    </script>
+</body>
+</html>
